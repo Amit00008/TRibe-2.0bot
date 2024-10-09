@@ -4,7 +4,7 @@
   "description": "This is a official bot for tribe 2.0 server",
   "main": "bot.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node bot.js"
   },
   "author": "@fr4nky.fr",
   "license": "ISC",
