@@ -1,0 +1,14 @@
+{
+  "name": "tribe-2.0",
+  "version": "1.0.0",
+  "description": "This is a official bot for tribe 2.0 server",
+  "main": "bot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "@fr4nky.fr",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}
