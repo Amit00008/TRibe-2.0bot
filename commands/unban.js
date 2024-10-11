@@ -1,46 +1,91 @@
-const { PermissionsBitField, EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, PermissionsBitField, Colors } = require('discord.js');
 
 module.exports = {
   name: 'unban',
-  description: 'Unbans a user from the server.',
-  usage: '<user_id>',
+  description: 'Unban a user from the server',
   async execute(message, args) {
-    // Check if the user has permission to unban members
     if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-      return message.reply('You do not have permission to use this command.');
+      const noPermissionEmbed = new EmbedBuilder()
+        .setColor(Colors.Red)
+        .setTitle('Permission Denied')
+        .setDescription('You do not have permission to unban members.')
+        .setFooter({
+          text: 'Tribe 2.0',
+          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
+        });
+      return message.reply({ embeds: [noPermissionEmbed] });
     }
 
-    // Check if an ID is provided
     const userId = args[0];
     if (!userId) {
-      return message.reply('Please provide the ID of the user to unban.');
+      const noUserIdEmbed = new EmbedBuilder()
+        .setColor(Colors.Yellow)
+        .setTitle('Invalid User ID')
+        .setDescription('Please provide a valid user ID to unban.')
+        .setFooter({
+          text: 'Tribe 2.0',
+          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
+        });
+      return message.reply({ embeds: [noUserIdEmbed] });
     }
 
-    // Attempt to unban the user
     try {
-      await message.guild.bans.remove(userId);
+      const user = await message.client.users.fetch(userId);
+      await message.guild.members.unban(userId);
 
-      // Optionally send a DM to the user notifying them of their unban
-      const unbannedUser = await message.guild.members.fetch(userId).catch(() => null);
-      if (unbannedUser) {
-        const dmEmbed = new EmbedBuilder()
-          .setColor('#00ff00')
-          .setTitle('You have been unbanned')
-          .setDescription(`You have been unbanned from **${message.guild.name}**.`)
-          .setFooter({ text: 'We hope to see you back!' });
+      const successEmbed = new EmbedBuilder()
+        .setColor(Colors.Green)
+        .setTitle('User Unbanned')
+        .setDescription(`User <@${userId}> has been unbanned successfully.`)
+        .setFooter({
+          text: 'Tribe 2.0',
+          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
+        });
 
-        await unbannedUser.send({ embeds: [dmEmbed] });
-        console.log(`DM sent to ${unbannedUser.user.tag}`); // Log successful DM
+      message.channel.send({ embeds: [successEmbed] });
+    } catch (error) {
+      let errorEmbed;
+
+      if (error.code === 10013) {
+        errorEmbed = new EmbedBuilder()
+          .setColor(Colors.Red)
+          .setTitle('Invalid User ID')
+          .setDescription('The user ID provided is invalid or the user does not exist.')
+          .setFooter({
+            text: 'Tribe 2.0',
+            iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
+          });
+      } else if (error.code === 50013) {
+        errorEmbed = new EmbedBuilder()
+          .setColor(Colors.Red)
+          .setTitle('Permission Denied')
+          .setDescription('I do not have permission to unban this user.')
+          .setFooter({
+            text: 'Tribe 2.0',
+            iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
+          });
+      } else if (error.code === 10026) {
+        errorEmbed = new EmbedBuilder()
+          .setColor(Colors.Red)
+          .setTitle('User Not Banned')
+          .setDescription('This user is not banned.')
+          .setFooter({
+            text: 'Tribe 2.0',
+            iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
+          });
       } else {
-        console.log(`User with ID ${userId} does not exist in the server.`); // Log user not found
+        console.error(`Error unbanning user with ID ${userId}:`, error);
+        errorEmbed = new EmbedBuilder()
+          .setColor(Colors.Red)
+          .setTitle('Failed to Unban User')
+          .setDescription(`Failed to unban user with ID ${userId}: ${error.message}`)
+          .setFooter({
+            text: 'Tribe 2.0',
+            iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
+          });
       }
 
-      // Notify in the channel that the user has been unbanned
-      message.channel.send(`User with ID ${userId} has been unbanned from the server.`);
-    } catch (err) {
-      // Handle error if unable to unban
-      console.error(`Failed to unban user with ID ${userId}: `, err);
-      message.channel.send(`Failed to unban user with ID ${userId}. They may not be banned.`);
+      message.reply({ embeds: [errorEmbed] });
     }
   },
 };

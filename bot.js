@@ -1,24 +1,19 @@
-// Load environment variables from .env file
-require('dotenv').config();
-
-// Import the required classes from discord.js
 const { Client, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
+const activity = require('./activity.js'); 
 
-// Create a new client instance
 const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds,         // Allows the bot to receive guild events
-    GatewayIntentBits.GuildMessages,  // Allows the bot to receive guild message events
-    GatewayIntentBits.MessageContent,  // Allows the bot to read message content
+    GatewayIntentBits.Guilds,        
+    GatewayIntentBits.GuildMessages,  
+    GatewayIntentBits.MessageContent,  
   ],
 });
 
 // Use the token from the .env file
-const TOKEN = process.env.DISCORD_TOKEN;
-const PREFIX = '!'; // Your command prefix
+const TOKEN = 'MTI5MzUwNzE1NTYzODM1ODA2Nw.GmGYTW.WsWDjBo03llev9-A2y2KuvazKLy0fzLcTIiRWg';
+const PREFIX = '!'; 
 
-// Load commands from the commands directory
 client.commands = new Map();
 
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
@@ -27,14 +22,9 @@ for (const file of commandFiles) {
   client.commands.set(command.name, command);
 }
 
-// When the bot is ready
-client.once('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`); // Log the bot's username to the console
+// when the bot starts we  calling activity func
 
-  // Set the bot's status
-  client.user.setActivity('YOUR BOT STATUS', { type: 'PLAYING' });
-  console.log('Status set to playing!'); // Log the status update
-});
+activity(client);
 
 // Listen for messages
 client.on('messageCreate', message => {
@@ -42,7 +32,7 @@ client.on('messageCreate', message => {
   if (message.author.bot) return;
 
   // Check if the bot is mentioned in the message
-  if (message.mentions.has(client.user)) {
+  if (message.mentions.has(client.user) && !message.reference) {
     return message.channel.send(`My prefix is \`${PREFIX}\``); // Reply with the prefix
   }
 
@@ -65,5 +55,5 @@ client.on('messageCreate', message => {
   }
 });
 
-// Log the bot in using the token
+
 client.login(TOKEN);
