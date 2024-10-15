@@ -1,6 +1,8 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
 const activity = require('./activity.js'); 
+const config = require('./config.json');
+
 
 const client = new Client({
   intents: [
@@ -11,7 +13,7 @@ const client = new Client({
 });
 
 // Use the token from the .env file
-const TOKEN = 'MTI5MzUwNzE1NTYzODM1ODA2Nw.GmGYTW.WsWDjBo03llev9-A2y2KuvazKLy0fzLcTIiRWg';
+const TOKEN = config.token;
 const PREFIX = '!'; 
 
 client.commands = new Map();
@@ -21,6 +23,8 @@ for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
   client.commands.set(command.name, command);
 }
+
+
 
 // when the bot starts we  calling activity func
 
