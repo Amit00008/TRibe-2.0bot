@@ -1,63 +1,76 @@
-const { Client, GatewayIntentBits } = require('discord.js');
 const fs = require('fs');
-const activity = require('./activity.js'); 
+const path = require('path');
+const { Client, Collection, GatewayIntentBits, ActivityType, Events } = require('discord.js');
 const config = require('./config.json');
+const connectDB = require('./database');
+const { afkUsers } = require('./commands/afk'); // Ensure this imports the Map correctly
 
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,        
-    GatewayIntentBits.GuildMessages,  
-    GatewayIntentBits.MessageContent,  
-  ],
-});
-
-// Use the token from the .env file
-const TOKEN = config.token;
-const PREFIX = '!'; 
-
-client.commands = new Map();
-
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+// Load commands into a collection
+client.commands = new Collection();
+const commandFiles = fs.readdirSync(path.join(__dirname, 'commands')).filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
-  client.commands.set(command.name, command);
+    const command = require(`./commands/${file}`);
+    client.commands.set(command.name, command);
+    console.log(`Loaded command: ${command.name}`);
 }
 
-
-
-// when the bot starts we  calling activity func
-
-activity(client);
-
-// Listen for messages
-client.on('messageCreate', message => {
-  // Ignore messages from bots
-  if (message.author.bot) return;
-
-  // Check if the bot is mentioned in the message
-  if (message.mentions.has(client.user) && !message.reference) {
-    return message.channel.send(`My prefix is \`${PREFIX}\``); // Reply with the prefix
-  }
-
-  // Ignore messages that don't start with the prefix
-  if (!message.content.startsWith(PREFIX)) return;
-
-  const args = message.content.slice(PREFIX.length).trim().split(/ +/); // Split the command and arguments
-  const commandName = args.shift().toLowerCase(); // Get the command name
-
-  const command = client.commands.get(commandName); // Get the command from the map
-
-  // If the command doesn't exist, return
-  if (!command) return;
-
-  try {
-    command.execute(message, args); // Execute the command with the message and args
-  } catch (error) {
-    console.error(error); // Log any errors
-    message.reply('There was an error executing that command!'); // Inform the user
-  }
+client.once('ready', async () => {
+    try {
+        await connectDB();
+        console.log(`Logged in as ${client.user.tag}!`);
+        client.user.setActivity('your commands!', { type: ActivityType.Listening });
+        console.log("Activity set!");
+    } catch (error) {
+        console.error("Error while connecting to database or setting activity:", error);
+    }
 });
 
+// Command handling
+client.on('messageCreate', message => {
+    if (message.author.bot) return; // Ignore bot messages
 
-client.login(TOKEN);
+
+    
+    // Handle AFK status removal
+    if (afkUsers.has(message.author.id)) {
+        console.log(`${message.author.tag} is removing their AFK status.`);
+        afkUsers.delete(message.author.id); // Remove the AFK status
+        message.reply('You are no longer AFK.'); // Notify the user
+        return; // Exit the function after removing AFK status
+    }
+
+    // Ignore messages without the specified prefix
+    if (!message.content.startsWith(config.prefix)) return;
+    
+    const args = message.content.slice(config.prefix.length).trim().split(/ +/);
+    const commandName = args.shift().toLowerCase();
+
+    // Check if the command exists in the collection and execute it
+    if (!client.commands.has(commandName)) return;
+
+    try {
+      client.commands.get(commandName).execute(message, args);
+    } catch (error) {
+      console.error(error);
+      message.reply('There was an error executing that command.');
+    }
+    
+    // Check if the mentioned user is AFK
+    const mentionedUser = message.mentions.users.first();
+    if (mentionedUser && afkUsers.has(mentionedUser.id)) {
+      const reason = afkUsers.get(mentionedUser.id);
+      message.reply(`${mentionedUser.tag} is currently AFK: ${reason}`);
+    }
+    if (commandName === 'exec') {
+      // Check for permissions
+     
+      if (message.author.id !== config.owners) {
+          return message.reply('You do not have permission to use this command.');
+      }
+  }
+  });
+  
+// Log in to Discord with your app's token
+client.login(config.token);

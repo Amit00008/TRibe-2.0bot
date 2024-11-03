@@ -1,98 +1,62 @@
-const { PermissionsBitField, EmbedBuilder, Colors } = require('discord.js');
+const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { footer, color } = require('../config.json');
 
 module.exports = {
   name: 'ban',
-  description: 'Ban a member from the server',
+  description: 'Bans a user from the server.',
   async execute(message, args) {
     // Check if the user has the permission to ban members
     if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-      const permissionEmbed = new EmbedBuilder()
-        .setColor(Colors.Red)
-        .setTitle('Permission Denied')
-        .setFooter({
-          text: 'Tribe 2.0',
-          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-        })
-        .setDescription('You do not have permission to ban members.');
-      return message.reply({ embeds: [permissionEmbed] });
+      console.log("User does not have ban permissions.");
+      return message.reply("You don't have permission to use this command.");
     }
 
-    // Check if a user was mentioned or a valid ID was passed
-    const target = message.mentions.members.first() || message.guild.members.cache.get(args[0]);
+    // Get the user to be banned
+    const userToBan = message.mentions.members.first() || await message.guild.members.fetch(args[0]).catch(() => null);
+
+    // If no user is mentioned or found by ID
+    if (!userToBan) {
+      console.log("No user mentioned or invalid user ID.");
+      return message.reply("Please mention a user to ban or provide a valid user ID.");
+    }
+
+    // Check if the bot has permission to ban members
+    if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+      console.log("Bot does not have ban permissions.");
+      return message.reply("I don't have permission to ban members.");
+    }
+    // Check if the bot has permission to ban members
+    if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.BanMembers)) {
+      return message.reply("I don't have permission to ban members.");
+    }
+
+    // Prevent banning administrators or higher roles
+    if (userToBan.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      return message.reply("I can't ban an administrator.");
+    }
+
+    // Ban the user with optional reason
     const reason = args.slice(1).join(' ') || 'No reason provided';
-
-    // Validate if a target is provided
-    if (!target) {
-      const noMemberEmbed = new EmbedBuilder()
-        .setColor(Colors.Yellow)
-        .setTitle('Invalid Member')
-        .setFooter({
-          text: 'Tribe 2.0',
-          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-        })
-        .setDescription('Please mention a valid member or provide a valid user ID to ban.');
-      return message.reply({ embeds: [noMemberEmbed] });
-    }
-
     try {
-      // Send a DM to the user being banned
-      const dmEmbed = new EmbedBuilder()
-        .setColor(Colors.Red)
-        .setTitle('You Have Been Banned')
-        .setFooter({
-          text: 'Tribe 2.0',
-          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-        })
-        .setDescription(`You have been banned from **Tribe 2.0** for the following reason: **${reason}**`)
-        .addFields({
-          name: 'Unban Appeal',
-          value: '[Submit your appeal here](https://discord.gg/3PKDbyqxjz)',
-        });
+      await userToBan.ban({ reason });
 
-      await target.send({ embeds: [dmEmbed] });
+      // Create an embed to show the ban information
+      const banEmbed = new EmbedBuilder()
+        .setColor(0xff0000) // Red color
+        .setTitle('User Banned')
+        .addFields(
+          { name: 'Banned User', value: `${userToBan.user.tag} (ID: ${userToBan.user.id})` },
+          { name: 'Banned By', value: `${message.author.tag}` },
+          { name: 'Reason', value: reason }
+        )
+        .setTimestamp()
+        .setFooter({ text: `Banned by ${message.author.tag} | ${footer}`, iconURL: message.author.displayAvatarURL() });
 
-      // Ban the member
-      await target.ban({ reason });
-
-      const banSuccessEmbed = new EmbedBuilder()
-        .setColor(Colors.Green)
-        .setTitle('Member Banned')
-        .setFooter({
-          text: 'Tribe 2.0',
-          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-        })
-        .setDescription(`${target.user.tag} has been banned from the server for: **${reason}**`);
-
-      message.channel.send({ embeds: [banSuccessEmbed] });
+      // Send the embed
+      message.channel.send({ embeds: [banEmbed] });
     } catch (error) {
-      console.log(`Could not send DM to ${target.user.tag}: ${error.message}`);
-
-      try {
-        // Ban the member if DM fails
-        await target.ban({ reason });
-
-        const dmFailedEmbed = new EmbedBuilder()
-          .setColor(Colors.Green)
-          .setTitle('Member Banned')
-          .setFooter({
-            text: 'Tribe 2.0',
-            iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-          })
-          .setDescription(`${target.user.tag} has been banned from the server, but the DM could not be sent.`);
-
-        message.channel.send({ embeds: [dmFailedEmbed] });
-      } catch (banError) {
-        const banFailedEmbed = new EmbedBuilder()
-          .setColor(Colors.Red)
-          .setTitle('Ban Failed')
-          .setFooter({
-            text: 'Tribe 2.0',
-            iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-          })
-          .setDescription(`Failed to ban ${target.user.tag}: ${banError.message}`);
-
-        message.reply({ embeds: [banFailedEmbed] });
-      }
+      console.error(error);
+      message.reply('There was an error trying to ban this user.');
     }
   },
 };

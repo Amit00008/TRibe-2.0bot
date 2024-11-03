@@ -1,110 +1,64 @@
-const fs = require('fs');
-const { PermissionsBitField, EmbedBuilder, Colors } = require('discord.js');
-const warnData = require('../warnings.json');
+const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+const Warn = require('../models/Warns'); // Import the Warn model
 
 module.exports = {
   name: 'warn',
-  description: 'Warn a user and track their warnings. Auto-bans after 3 warnings and clears warnings after ban.',
-  execute(message, args) {
+  description: 'Warns a user and stores the warning in the database.',
+  async execute(message, args) {
     // Check if the user has the permission to warn members
     if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
-      const noPermissionEmbed = new EmbedBuilder()
-        .setColor(Colors.Red)
-        .setTitle('Permission Denied')
-        .setFooter({
-          text: 'Tribe 2.0',
-          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-        })
-        .setDescription('You do not have permission to warn members.');
-      return message.reply({ embeds: [noPermissionEmbed] });
+      return message.reply("You don't have permission to use this command.");
     }
 
-    // Ensure a valid member is mentioned (not in reply)
-    const target = message.mentions.members.first();
-    if (!target) {
-      const noMemberEmbed = new EmbedBuilder()
-        .setColor(Colors.Yellow)
-        .setTitle('No Member Mentioned')
-        .setFooter({
-          text: 'Tribe 2.0',
-          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-        })
-        .setDescription('Please mention a valid member to warn.');
-      return message.reply({ embeds: [noMemberEmbed] });
+    // Get the user to be warned
+    const userToWarn = message.mentions.members.first() || await message.guild.members.fetch(args[0]).catch(() => null);
+
+    // If no user is mentioned or found by ID
+    if (!userToWarn) {
+      return message.reply("Please mention a user to warn or provide a valid user ID.");
     }
 
+    // Get the reason for the warning
     const reason = args.slice(1).join(' ') || 'No reason provided';
 
-    // Initialize warning data for the user if not already present
-    if (!warnData[target.id]) {
-      warnData[target.id] = [];
+    // Find or create the warning document for the user
+    let warnDoc = await Warn.findOne({ userId: userToWarn.id, guildId: message.guild.id });
+  
+    if (!warnDoc) {
+      warnDoc = new Warn({ userId: userToWarn.id, guildId: message.guild.id, warnings: [] });
     }
 
-    // Add the warning to the user's warning data
-    warnData[target.id].push({
+    // Add the warning to the document
+    warnDoc.warnings.push({
+      reason,
+      date: new Date(),
       moderator: message.author.tag,
-      reason: reason,
-      date: new Date().toLocaleString(),
     });
 
-    // Write updated warnings data to file
-    fs.writeFileSync('./warnings.json', JSON.stringify(warnData, null, 2));
+    // Save the document
+    try {
+      await warnDoc.save();
+    } catch (error) {
+      console.error(error);
+      return message.reply('There was an error saving the warning.');
+    }
 
-    // Create and send the warning embed
+    // Create an embed to show the warning information
     const warnEmbed = new EmbedBuilder()
-      .setColor(Colors.Yellow)
+      .setColor(0xffcc00) // Yellow color
       .setTitle('User Warned')
       .addFields(
-        { name: 'Warned User', value: `${target.user.tag}` },
-        { name: 'Reason', value: reason },
-        { name: 'Moderator', value: message.author.tag },
-        { name: 'Date', value: new Date().toLocaleString() }
+        { name: 'Warned User', value: `${userToWarn.user.tag} (ID: ${userToWarn.user.id})` },
+        { name: 'Warned By', value: `${message.author.tag}` },
+        { name: 'Reason', value: reason }
       )
-      .setFooter({
-        text: 'Tribe 2.0',
-        iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-      });
+      .setTimestamp()
+      .setFooter({ text: `Warned by ${message.author.tag}`, iconURL: message.author.displayAvatarURL() });
 
+    // Send the embed
     message.channel.send({ embeds: [warnEmbed] });
 
-    // Notify the user via DM about the warning
-    target.send(`You have been warned for: ${reason}`).catch(err => {
-      console.log(`Could not send DM to ${target.user.tag}: ${err.message}`);
-    });
-
-    // Check if the user has accumulated 3 warnings
-    if (warnData[target.id].length >= 3) {
-      
-      target.send(`You have received 3 warnings and will be banned from the server for repeated violations. Please review the server rules to avoid future issues.
-If you believe this is a mistake, please submit an unban appeal at: 
-https://discord.gg/3PKDbyqxjz`).then(() => {
-
-        // Ban the user
-        target.ban({ reason: `Accumulated 3 warnings. Last reason: ${reason}` })
-          .then(() => {
-            const banEmbed = new EmbedBuilder()
-              .setColor(Colors.Red)
-              .setTitle('User Banned')
-              .setDescription(`${target.user.tag} has been banned for receiving 3 warnings.`)
-              .setFooter({
-                text: 'Tribe 2.0',
-                iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-              });
-
-            message.channel.send({ embeds: [banEmbed] });
-
-            
-            delete warnData[target.id];
-            fs.writeFileSync('./warnings.json', JSON.stringify(warnData, null, 2));
-            console.log(`Warnings for ${target.id} cleared after ban.`);
-          })
-          .catch(error => {
-            console.error(`Failed to ban ${target.user.tag}: ${error.message}`);
-            message.channel.send(`Failed to ban ${target.user.tag}. Please check my permissions.`);
-          });
-      }).catch(err => {
-        console.log(`Could not send ban DM to ${target.user.tag}: ${err.message}`);
-      });
-    }
+    // Log the action
+    console.log(`Warning issued to ${userToWarn.user.tag} by ${message.author.tag} for: ${reason}`);
   },
 };

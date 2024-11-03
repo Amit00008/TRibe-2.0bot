@@ -1,14 +1,23 @@
 {
-  "name": "tribe-2.0",
+  "name": "tribebot",
   "version": "1.0.0",
-  "description": "This is a official bot for tribe 2.0 server",
-  "main": "bot.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node bot.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "@fr4nky.fr",
+  "author": "",
   "license": "ISC",
+  "description": "",
   "dependencies": {
-    "dotenv": "^16.4.5"
+    "axios": "^0.21.0",
+    "chalk": "^4.1.0",
+    "child_process": "^1.0.2",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "fs": "^0.0.1-security",
+    "moment": "^2.29.1",
+    "mongoose": "^5.10.10",
+    "os": "^0.1.2",
+    "pretty-ms": "^9.1.0"
   }
 }

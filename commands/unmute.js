@@ -2,32 +2,33 @@ const { PermissionsBitField } = require('discord.js');
 
 module.exports = {
   name: 'unmute',
-  description: 'Unmute  a user',
+  description: 'Removes the mute (timeout) from a user.',
   async execute(message, args) {
-   
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
-      return message.reply('You do not have permission to Unmute.');
+    // Check if the user has the permission to manage roles
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+      return message.reply("You don't have permission to use this command.");
     }
 
-    const target = message.mentions.members.first();
-    if (!target) {
-      return message.reply('Please mention a valid user to Unmute.');
+    // Get the user to unmute
+    const userToUnmute = message.mentions.members.first() || await message.guild.members.fetch(args[0]).catch(() => null);
+
+    // If no user is mentioned or found by ID
+    if (!userToUnmute) {
+      return message.reply("Please mention a user to unmute or provide a valid user ID.");
     }
 
-  
-    if (!target.isCommunicationDisabled()) {
-      return message.reply('This user is not in timeout.');
+    // Check if the user is currently muted
+    if (!userToUnmute.isCommunicationDisabled()) {
+      return message.reply(`${userToUnmute.user.tag} is not muted.`);
     }
 
-    try {
-      await target.timeout(null);
-      message.channel.send(`${target.user.tag}'s mute has been removed.`);
+    // Unmute the user by removing the timeout
+    await userToUnmute.timeout(null, `Unmuted by ${message.author.tag}`).catch(err => {
+      console.error(err);
+      return message.reply('There was an error trying to unmute the user.');
+    });
 
-    
-      console.log(`Removed mute for ${target.user.tag} by ${message.author.tag}`);
-    } catch (error) {
-      console.error(`Error removing timeout for user: ${target.user.tag}`, error);
-      message.reply(`Failed to remove timeout for ${target.user.tag}: ${error.message}`);
-    }
+    // Send confirmation message
+    message.channel.send(`${userToUnmute.user.tag} has been unmuted.`);
   },
 };

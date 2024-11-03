@@ -1,60 +1,36 @@
-const { EmbedBuilder, PermissionsBitField, Colors } = require('discord.js');
+const { PermissionsBitField } = require('discord.js');
 
 module.exports = {
   name: 'purge',
-  description: 'Delete a specified number of messages from the channel',
+  description: 'Deletes a specified number of messages from the channel.',
   async execute(message, args) {
-
+    // Check if the user has the permission to manage messages
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
-      const noPermissionEmbed = new EmbedBuilder()
-        .setColor(Colors.Red)
-        .setTitle('Permission Denied')
-        .setDescription('You do not have permission to manage messages.')
-        .setFooter({
-          text: 'Tribe 2.0',
-          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-        });
-      return message.reply({ embeds: [noPermissionEmbed] });
+      return message.reply("You don't have permission to use this command.");
     }
 
-    const deleteCount = parseInt(args[0], 10);
-    if (!deleteCount || deleteCount < 1 || deleteCount > 200) {
-      const invalidNumberEmbed = new EmbedBuilder()
-        .setColor(Colors.Yellow)
-        .setTitle('Invalid Number')
-        .setDescription('Please provide a number between 1 and 200 for the number of messages to delete.')
-        .setFooter({
-          text: 'Tribe 2.0',
-          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-        });
-      return message.reply({ embeds: [invalidNumberEmbed] });
+    // Get the number of messages to delete
+    const amount = parseInt(args[0]);
+
+    // Check if the amount is a valid number
+    if (isNaN(amount) || amount < 1 || amount > 100) {
+      return message.reply('Please specify a number of messages to delete (1-100).');
     }
 
-    try {
-      const deletedMessages = await message.channel.bulkDelete(deleteCount, true); 
-      const successEmbed = new EmbedBuilder()
-        .setColor(Colors.Green)
-        .setTitle('Messages Deleted')
-        .setDescription(`Successfully deleted ${deletedMessages.size} messages.`)
-        .setFooter({
-          text: 'Tribe 2.0',
-          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-        });
+    // Delete messages
+    const fetched = await message.channel.bulkDelete(amount, true).catch(err => {
+      console.error(err);
+      message.channel.send('There was an error trying to purge messages in this channel!');
+    });
 
-      message.channel.send({ embeds: [successEmbed] }).then(msg => {
-        setTimeout(() => msg.delete(), 5000); 
+    // Send feedback about the purge
+    if (fetched.size > 0) {
+      message.channel.send(`Successfully deleted ${fetched.size} message(s).`).then(msg => {
+        // Optionally, delete the feedback message after a short delay
+        setTimeout(() => msg.delete(), 5000);
       });
-    } catch (error) {
-      const errorEmbed = new EmbedBuilder()
-        .setColor(Colors.Red)
-        .setTitle('Failed to Delete Messages')
-        .setDescription(`An error occurred: ${error.message}`)
-        .setFooter({
-          text: 'Tribe 2.0',
-          iconURL: 'https://media.discordapp.net/attachments/1285399735967940720/1285399815055998977/a_ff978afb25fb15001f0455355f51aedf.gif?ex=670a6e1d&is=67091c9d&hm=4c0c85e48cbccb2ef1ddab2878741a92f2c27d663c1bd69d5b2561e1a6777249&=&width=160&height=160',
-        });
-
-      message.reply({ embeds: [errorEmbed] });
+    } else {
+      message.channel.send('No messages were deleted. Please ensure you are trying to delete messages that are not older than 14 days.');
     }
   },
 };

@@ -2,34 +2,34 @@ const { PermissionsBitField } = require('discord.js');
 
 module.exports = {
   name: 'mute',
-  description: 'mute a user in the server for a specified duration',
+  description: 'Temporarily mutes a user for a specified duration.',
   async execute(message, args) {
-  
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
-      return message.reply('You do not have permission to timeout members.');
+    // Check if the user has the permission to manage roles
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+      return message.reply("You don't have permission to use this command.");
     }
 
-    const target = message.mentions.members.first();
-    if (!target) {
-      return message.reply('Please mention a valid user to timeout.');
+    // Get the user to mute
+    const userToMute = message.mentions.members.first() || await message.guild.members.fetch(args[0]).catch(() => null);
+
+    // If no user is mentioned or found by ID
+    if (!userToMute) {
+      return message.reply("Please mention a user to mute or provide a valid user ID.");
     }
 
-    const time = parseInt(args[1], 10); 
-    if (!time || isNaN(time)) {
-      return message.reply('Please provide a valid duration (in minutes) for the timeout.');
+    // Get the duration
+    const duration = parseInt(args[1]);
+    if (isNaN(duration) || duration <= 0) {
+      return message.reply('Please specify a valid duration in seconds for the mute.');
     }
 
-    const timeoutDuration = time * 60 * 1000; 
+    // Mute the user by applying a timeout
+    await userToMute.timeout(duration * 1000, `Muted by ${message.author.tag}`).catch(err => {
+      console.error(err);
+      return message.reply('There was an error trying to mute the user.');
+    });
 
-    try {
-      await target.timeout(timeoutDuration, `Mute by ${message.author.tag}`);
-      message.channel.send(`${target.user.tag} has been muted for ${time} minutes.`);
-
-      
-      console.log(`Timed out ${target.user.tag} for ${time} minutes by ${message.author.tag}`);
-    } catch (error) {
-      console.error(`Error timing out user: ${target.user.tag}`, error);
-      message.reply(`Failed to timeout ${target.user.tag}: ${error.message}`);
-    }
+    // Send confirmation message
+    message.channel.send(`${userToMute.user.tag} has been muted for ${duration} seconds.`);
   },
 };
