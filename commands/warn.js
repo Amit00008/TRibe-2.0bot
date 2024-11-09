@@ -5,6 +5,7 @@ module.exports = {
   name: 'warn',
   description: 'Warns a user and stores the warning in the database.',
   async execute(message, args) {
+
     // Check if the user has the permission to warn members
     if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
       return message.reply("You don't have permission to use this command.");
@@ -28,6 +29,18 @@ module.exports = {
       warnDoc = new Warn({ userId: userToWarn.id, guildId: message.guild.id, warnings: [] });
     }
 
+    
+  
+    if (warnDoc.warnings.length >= 2) {
+      try {
+        await userToWarn.ban({ reason: 'Reached 3 warnings' });
+        message.channel.send(`${userToWarn.user.tag} has been banned for reaching 3 warnings.`);
+        await userToWarn.send(`You have been banned from ${message.guild.name} for reaching 3 warnings.`);
+      } catch (error) {
+        console.error(error);
+        return message.reply('There was an error banning the user.');
+      }
+    }
     // Add the warning to the document
     warnDoc.warnings.push({
       reason,
@@ -36,6 +49,12 @@ module.exports = {
     });
 
     // Save the document
+    try {
+      await userToWarn.send(`You have been warned in ${message.guild.name} for: ${reason}`);
+    } catch (error) {
+      console.error('Could not send DM to the user.', error);
+    }
+    
     try {
       await warnDoc.save();
     } catch (error) {
@@ -62,3 +81,4 @@ module.exports = {
     console.log(`Warning issued to ${userToWarn.user.tag} by ${message.author.tag} for: ${reason}`);
   },
 };
+  

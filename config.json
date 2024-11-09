@@ -1,7 +1,7 @@
 {
     "token": "",
     "prefix": "!",
-    "mongoDB": "mongodb+srv://amit:ets6GeVtZ7Fo15Xh@dogbot.atacs.mongodb.net/?retryWrites=true&w=majority&appName=dogbo",
+    "mongoDB": "mongodb+srv://amit:ets6GeVtZ7Fo15Xh@dogbot.atacs.mongodb.net/?retryWrites=true&w=majority&appName=dogbot",
     "color": "#ed3d11",
     "footer": "Tribe 2.0 bot",
     "credits": "- Amit",
